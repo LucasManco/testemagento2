@@ -1,0 +1,38 @@
+#!/bin/bash
+
+#cloning and configurations of https://raw.githubusercontent.com/markshust/docker-magento/master/lib/template
+git clone https://github.com/markshust/docker-magento
+mv docker-magento/compose/* ./
+mv docker-magento/compose/.vscode ./
+rm -rf docker-magento
+
+# Ensure these are created so Docker doesn't create them as root
+mkdir -p ~/.composer ~/.ssh
+
+cd src/
+composer install
+cd ..
+
+# Start some containers, copy files to them and then restart the containers:
+bin/start --no-dev
+bin/copytocontainer --all ## Initial copy will take a few minutes...
+
+# Import existing database:
+bin/mysql < magento.sql
+
+# Update database connection details to use the above Docker MySQL credentials:
+# Also note: creds for the MySQL server are defined at startup from env/db.env
+#vi src/app/etc/env.php
+
+
+# Import app-specific environment settings:
+bin/magento app:config:import
+
+
+# Create a DNS host entry and setup Magento base url
+bin/setup-domain laredo.test
+
+
+bin/restart
+
+open https://magento.test
